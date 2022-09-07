@@ -1,5 +1,7 @@
 package com.nttdata.controller;
 
+import java.util.concurrent.atomic.AtomicLong;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -13,13 +15,20 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.nttdata.model.ClientBd;
+import com.nttdata.model.ClientResponse;
 import com.nttdata.service.ClientService;
 
+import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+@Slf4j
 @RestController
 public class ClientController {
+	
+	private final AtomicLong counter = new AtomicLong();
+	
+	private static final String template = "Registro Satisfactorio, %s!";
 	
 	@Autowired
 	private ClientService service;
@@ -28,7 +37,7 @@ public class ClientController {
 	public Mono<ResponseEntity<Flux<ClientBd>>> findAll() {
 		
 		Flux<ClientBd> clients = service.findAll();
-		
+		log.info("FindAll : ", clients);
 		return Mono.just(ResponseEntity
 				.ok()
 				.contentType(MediaType.APPLICATION_JSON)
@@ -39,6 +48,7 @@ public class ClientController {
 	@GetMapping("/{id}")
 	public Mono<ResponseEntity<ClientBd>> findById(@PathVariable("id") long id) {
 		
+		log.info("getById" + "OK");
 		return service.findById(id)
 				.map(c -> ResponseEntity
 						.ok()
@@ -49,12 +59,14 @@ public class ClientController {
 	}
 	
 	@PostMapping("/save")
-	public Mono<ResponseEntity<ClientBd>> create(@RequestBody ClientBd client) {
+	public Mono<ClientResponse> create(@RequestBody ClientBd client) {
 
-		return service.create(client)
-				.map(c -> ResponseEntity
-						.ok()
-						.contentType(MediaType.APPLICATION_JSON).body(c));
+		return service.create(new ClientBd(client.getId(), client.getName(), client.getLastname(), client.getType(),
+				client.getIdentityNumber())).map(c -> {
+					
+					log.info("Cliente registrado" + "OK");
+					return new ClientResponse(counter.incrementAndGet(), String.format(template, c.getName()));
+				});
 
 	}
 	
